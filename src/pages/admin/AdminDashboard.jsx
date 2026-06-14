@@ -6,7 +6,7 @@ import {
   PieChart, Pie, Cell, Legend,
 } from "recharts";
 import { Ticket, AlertTriangle, CheckCircle, Clock } from "lucide-react";
-import { seedFakeTickets } from "../../utils/seedFakeTickets";
+// import { seedFakeTickets } from "../../utils/seedFakeTickets";
 const URGENCY_COLORS = { Low: "#16a34a", Medium: "#f59e0b", High: "#dc2626" };
 const STATUS_COLORS = {
   Open: "#3b82f6",
@@ -161,12 +161,12 @@ export default function AdminDashboard() {
           <div className="text-sm font-semibold text-emerald-700 mt-0.5">
             {recentTickets.length} new
           </div>
-          <button
+          {/* <button
             onClick={() => seedFakeTickets(100)}
             className="bg-emerald-600 text-white px-4 py-2 rounded-lg"
           >
             Generate 100 Tickets
-          </button>
+          </button> */}
         </div>
       </div>
 
