@@ -544,8 +544,69 @@ export default function AdminReports() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-64 text-sm text-gray-400">
-                Loading data…
+            <div className="space-y-6 animate-pulse p-6 max-w-7xl mx-auto">
+                {/* Page Header */}
+                <div className="flex items-center justify-between">
+                    <div className="h-8 w-56 bg-gray-200 rounded-lg"></div>
+
+                    <div className="flex gap-3">
+                        <div className="h-10 w-28 bg-gray-200 rounded-lg"></div>
+                        <div className="h-10 w-28 bg-gray-200 rounded-lg"></div>
+                    </div>
+                </div>
+
+                {/* Filters */}
+                <div className="bg-white border rounded-2xl p-5">
+                    <div className="grid gap-4 md:grid-cols-4">
+                        {[...Array(4)].map((_, i) => (
+                            <div
+                                key={i}
+                                className="h-10 bg-gray-200 rounded-lg"
+                            />
+                        ))}
+                    </div>
+                </div>
+
+                {/* Summary Cards */}
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    {[...Array(4)].map((_, i) => (
+                        <div
+                            key={i}
+                            className="bg-white border rounded-2xl p-5"
+                        >
+                            <div className="h-4 w-24 bg-gray-200 rounded mb-3"></div>
+                            <div className="h-8 w-16 bg-gray-200 rounded"></div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Charts */}
+                <div className="grid gap-6 lg:grid-cols-2">
+                    {[...Array(2)].map((_, i) => (
+                        <div
+                            key={i}
+                            className="bg-white border rounded-2xl p-5"
+                        >
+                            <div className="h-5 w-40 bg-gray-200 rounded mb-5"></div>
+
+                            <div className="h-72 bg-gray-100 rounded-xl"></div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Report Results */}
+                <div className="bg-white border rounded-2xl p-5">
+                    <div className="h-5 w-40 bg-gray-200 rounded mb-5"></div>
+
+                    <div className="space-y-4">
+                        {[...Array(6)].map((_, i) => (
+                            <div
+                                key={i}
+                                className="h-14 bg-gray-100 rounded-xl"
+                            />
+                        ))}
+                    </div>
+                </div>
             </div>
         );
     }
@@ -765,6 +826,7 @@ export default function AdminReports() {
                     <h2 className="text-sm font-semibold text-gray-700">Device & Category Trouble Report</h2>
                     <span className="text-xs text-gray-400">— procurement intelligence</span>
                 </div>
+
                 <DeviceTroubleReport tickets={filtered} />
             </div>
 

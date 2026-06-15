@@ -425,8 +425,8 @@ function Pagination({ currentPage, totalPages, onPageChange }) {
             key={p}
             onClick={() => onPageChange(p)}
             className={`w-8 h-8 rounded-lg text-xs font-medium border transition-all ${p === currentPage
-                ? "bg-emerald-700 text-white border-emerald-700"
-                : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:text-gray-900"
+              ? "bg-emerald-700 text-white border-emerald-700"
+              : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:text-gray-900"
               }`}
           >
             {p}
@@ -511,8 +511,48 @@ export default function AdminTickets() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64 text-sm text-gray-400">
-        Loading tickets…
+      <div className="space-y-6 animate-pulse p-6 max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="h-8 w-48 bg-gray-200 rounded-lg"></div>
+          <div className="h-10 w-32 bg-gray-200 rounded-lg"></div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-3">
+          {[...Array(6)].map((_, i) => (
+            <div
+              key={i}
+              className="h-10 w-24 bg-gray-200 rounded-full"
+            />
+          ))}
+        </div>
+
+        {/* Ticket Cards */}
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {[...Array(6)].map((_, i) => (
+            <div
+              key={i}
+              className="bg-white border rounded-2xl p-5 shadow-sm"
+            >
+              <div className="flex justify-between mb-4">
+                <div className="h-5 w-32 bg-gray-200 rounded"></div>
+                <div className="h-6 w-20 bg-gray-200 rounded-full"></div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="h-4 w-full bg-gray-200 rounded"></div>
+                <div className="h-4 w-3/4 bg-gray-200 rounded"></div>
+                <div className="h-4 w-1/2 bg-gray-200 rounded"></div>
+              </div>
+
+              <div className="flex justify-between mt-6">
+                <div className="h-8 w-20 bg-gray-200 rounded-lg"></div>
+                <div className="h-8 w-20 bg-gray-200 rounded-lg"></div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
@@ -563,8 +603,8 @@ export default function AdminTickets() {
         <button
           onClick={() => setShowFilters(!showFilters)}
           className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border transition-all shrink-0 ${showFilters
-              ? "bg-emerald-700 text-white border-emerald-700"
-              : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
+            ? "bg-emerald-700 text-white border-emerald-700"
+            : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
             }`}
         >
           <SlidersHorizontal className="w-3.5 h-3.5" />
@@ -637,15 +677,15 @@ export default function AdminTickets() {
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-medium border transition-all ${isActive
-                  ? "bg-emerald-700 text-white border-emerald-700"
-                  : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
+                ? "bg-emerald-700 text-white border-emerald-700"
+                : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
                 }`}
             >
               {tab}
               <span
                 className={`text-xs px-1.5 py-0.5 rounded font-medium ${isActive
-                    ? "bg-white/20 text-white"
-                    : urgencyCountStyle[tab] || "bg-gray-100 text-gray-500"
+                  ? "bg-white/20 text-white"
+                  : urgencyCountStyle[tab] || "bg-gray-100 text-gray-500"
                   }`}
               >
                 {count}

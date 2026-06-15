@@ -8,12 +8,13 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminTickets from "./pages/admin/AdminTickets";
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminReports from "./pages/admin/AdminReports";
+import LoadingSpinner from "./components/common/LoadingSpinner";
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
   if (loading) return (
     <div className="min-h-screen bg-emerald-950 flex items-center justify-center">
-      <div className="text-emerald-400 text-lg animate-pulse">Loading...</div>
+      <LoadingSpinner text="Loading..." />
     </div>
   );
   return user ? children : <Navigate to="/admin/login" replace />;
