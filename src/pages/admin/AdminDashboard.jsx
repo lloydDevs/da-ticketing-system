@@ -90,7 +90,7 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="space-y-6 animate-pulse p-10">
+      <div className="space-y-6 animate-pulse p-10 max-w-7xl mx-auto">
         <div className="h-8 bg-gray-200 rounded w-64"></div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-5">
