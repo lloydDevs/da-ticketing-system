@@ -1,15 +1,21 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { LayoutDashboard, Ticket, LogOut, Monitor, Menu, X, FileSpreadsheet } from "lucide-react";
-import { useState } from "react";
+import {
+  LayoutDashboard, Ticket, LogOut, Monitor,
+  Menu, X, FileSpreadsheet, Bell
+} from "lucide-react";
+import { useState, useEffect } from "react";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { db } from "../../lib/firebase";
 
 const navItems = [
   { to: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/admin/tickets", icon: Ticket, label: "All tickets" },
+  { to: "/admin/tickets", icon: Ticket, label: "All Tickets" },
+  { to: "/admin/notifications", icon: Bell, label: "Notifications", isNotif: true },
   { to: "/admin/reports", icon: FileSpreadsheet, label: "Reports" },
 ];
 
-function SidebarContent({ user, onLogout, onNavClick }) {
+function SidebarContent({ user, onLogout, onNavClick, unreadCount }) {
   return (
     <div className="flex flex-col h-full">
       {/* Logo */}
@@ -19,7 +25,7 @@ function SidebarContent({ user, onLogout, onNavClick }) {
             <Monitor className="w-4 h-4 text-white" />
           </div>
           <div>
-            <div className="text-white font-medium text-sm leading-tight">DA-MIMAROPA</div>
+            <div className="text-white font-semibold text-sm leading-tight">DA-MIMAROPA</div>
             <div className="text-emerald-400 text-[10px] mt-0.5">IT Ticketing · MIS</div>
           </div>
         </div>
@@ -27,7 +33,7 @@ function SidebarContent({ user, onLogout, onNavClick }) {
 
       {/* Nav */}
       <nav className="flex-1 px-2 py-4 space-y-0.5">
-        {navItems.map(({ to, icon: Icon, label }) => (
+        {navItems.map(({ to, icon: Icon, label, isNotif }) => (
           <NavLink
             key={to}
             to={to}
@@ -39,8 +45,25 @@ function SidebarContent({ user, onLogout, onNavClick }) {
               }`
             }
           >
-            <Icon className="w-4 h-4 shrink-0" />
-            {label}
+            {/* Bell icon with pulsing dot */}
+            <span className="relative shrink-0">
+              <Icon className="w-4 h-4" />
+              {isNotif && unreadCount > 0 && (
+                <>
+                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500" />
+                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 animate-ping" />
+                </>
+              )}
+            </span>
+
+            <span className="flex-1">{label}</span>
+
+            {/* ✅ Count badge — only shows when there are unreads */}
+            {isNotif && unreadCount > 0 && (
+              <span className="min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-semibold leading-none">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>
@@ -67,17 +90,33 @@ export default function AdminLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const handleLogout = async () => {
     await logout();
     navigate("/");
   };
 
+  useEffect(() => {
+    // ✅ Match Notifications.jsx: isViewed !== true means unread
+    // Client-side filter avoids composite index requirement
+    const unsub = onSnapshot(collection(db, "tickets"), (snap) => {
+      const count = snap.docs.filter((d) => d.data().isViewed !== true).length;
+      setUnreadCount(count);
+    });
+    return unsub;
+  }, []);
+
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-52 bg-emerald-950 shrink-0">
-        <SidebarContent user={user} onLogout={handleLogout} onNavClick={() => { }} />
+        <SidebarContent
+          user={user}
+          onLogout={handleLogout}
+          onNavClick={() => { }}
+          unreadCount={unreadCount}
+        />
       </aside>
 
       {/* Mobile Sidebar Overlay */}
@@ -88,9 +127,13 @@ export default function AdminLayout() {
               user={user}
               onLogout={handleLogout}
               onNavClick={() => setSidebarOpen(false)}
+              unreadCount={unreadCount}
             />
           </div>
-          <div className="flex-1 bg-black/40" onClick={() => setSidebarOpen(false)} />
+          <div
+            className="flex-1 bg-black/40"
+            onClick={() => setSidebarOpen(false)}
+          />
         </div>
       )}
 
@@ -104,12 +147,20 @@ export default function AdminLayout() {
             </div>
             <span className="text-white font-medium text-sm">DA-MIMAROPA IT</span>
           </div>
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="text-emerald-400 p-1"
-          >
-            {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
+          <div className="flex items-center gap-2">
+            {/* ✅ Mobile topbar badge */}
+            {unreadCount > 0 && (
+              <span className="min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-semibold">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="text-emerald-400 p-1"
+            >
+              {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
         </div>
 
         <main className="flex-1 overflow-y-auto">

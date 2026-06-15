@@ -1,11 +1,16 @@
 import { useEffect, useState, useRef } from "react";
 import { collection, onSnapshot, query, orderBy, writeBatch, doc } from "firebase/firestore";
 import { db } from "../../lib/firebase";
-import TicketCard from "../../components/TicketCard";
-import { Search, SlidersHorizontal, ChevronLeft, ChevronRight, Upload, X, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import TicketCard, { TicketRow } from "../../components/TicketCard";
+import {
+  Search, SlidersHorizontal, ChevronLeft, ChevronRight,
+  Upload, X, AlertCircle, CheckCircle2, Loader2,
+  LayoutGrid, List,
+} from "lucide-react";
 import { OFFICES, ISSUE_CATEGORIES } from "../../data/offices";
 import * as XLSX from "xlsx";
 
+// ─── Constants ────────────────────────────────────────────────────────────────
 const URGENCY_TABS = ["All", "High", "Medium", "Low"];
 const PAGE_SIZE_OPTIONS = [8, 12, 20, 32];
 
@@ -16,8 +21,6 @@ const urgencyCountStyle = {
 };
 
 // ─── Excel column → Firestore field mapping ───────────────────────────────────
-// Keys are lowercase/trimmed Excel header names; values are Firestore field names.
-// Add or adjust entries here to match your actual spreadsheet headers.
 const COLUMN_MAP = {
   "ticket id": "ticketId",
   "ticketid": "ticketId",
@@ -26,7 +29,7 @@ const COLUMN_MAP = {
   "firstname": "firstName",
   "last name": "lastName",
   "lastname": "lastName",
-  "name": "_fullName",           // handled separately below
+  "name": "_fullName",
   "full name": "_fullName",
   "email": "email",
   "contact": "contactNumber",
@@ -64,7 +67,7 @@ const COLUMN_MAP = {
   "date resolved": "resolvedDate",
 };
 
-// Normalise urgency values from Excel to match the app's enum
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 function normaliseUrgency(raw) {
   if (!raw) return "Low";
   const v = String(raw).trim().toLowerCase();
@@ -73,7 +76,6 @@ function normaliseUrgency(raw) {
   return "Low";
 }
 
-// Normalise status values
 function normaliseStatus(raw) {
   if (!raw) return "Open";
   const v = String(raw).trim().toLowerCase();
@@ -83,11 +85,9 @@ function normaliseStatus(raw) {
   return "Open";
 }
 
-// Parse an Excel date serial or string into a JS Date (or null)
 function parseExcelDate(raw) {
   if (!raw) return null;
   if (typeof raw === "number") {
-    // Excel date serial
     return XLSX.SSF.parse_date_code(raw)
       ? new Date(Date.UTC(1899, 11, 30) + raw * 86400000)
       : null;
@@ -96,11 +96,9 @@ function parseExcelDate(raw) {
   return isNaN(d) ? null : d;
 }
 
-// Convert a single Excel row (already mapped) into a clean Firestore doc
 function rowToTicket(mapped) {
   const ticket = { ...mapped };
 
-  // Split "full name" into first/last
   if (ticket._fullName) {
     const parts = String(ticket._fullName).trim().split(/\s+/);
     ticket.firstName = parts[0] || "";
@@ -119,22 +117,20 @@ function rowToTicket(mapped) {
     ticket.resolvedDate = rd || null;
   }
 
-  // Default required fields
   if (!ticket.status) ticket.status = "Open";
   if (!ticket.urgency) ticket.urgency = "Low";
 
   ticket.importedAt = new Date();
-
   return ticket;
 }
 
 // ─── ImportModal ──────────────────────────────────────────────────────────────
 function ImportModal({ onClose }) {
   const fileRef = useRef(null);
-  const [rows, setRows] = useState([]);        // preview rows
+  const [rows, setRows] = useState([]);
   const [headers, setHeaders] = useState([]);
   const [fileName, setFileName] = useState("");
-  const [step, setStep] = useState("idle");    // idle | preview | importing | done | error
+  const [step, setStep] = useState("idle");
   const [importCount, setImportCount] = useState(0);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -157,7 +153,6 @@ function ImportModal({ onClose }) {
         const excelHeaders = raw[0].map((h) => String(h).trim());
         setHeaders(excelHeaders);
 
-        // Map rows using COLUMN_MAP
         const mapped = raw.slice(1).filter((r) => r.some(Boolean)).map((r) => {
           const obj = {};
           excelHeaders.forEach((h, i) => {
@@ -167,7 +162,7 @@ function ImportModal({ onClose }) {
           return obj;
         });
 
-        setRows(mapped.slice(0, 5)); // preview first 5
+        setRows(mapped.slice(0, 5));
         setStep("preview");
       } catch (err) {
         setErrorMsg("Could not parse the file. Make sure it is a valid .xlsx or .xls file.");
@@ -185,7 +180,6 @@ function ImportModal({ onClose }) {
   const handleImport = async () => {
     setStep("importing");
     try {
-      // Re-parse to get ALL rows (preview only showed 5)
       const input = fileRef.current?.files[0];
       if (!input) throw new Error("No file selected");
 
@@ -204,7 +198,6 @@ function ImportModal({ onClose }) {
         return rowToTicket(obj);
       });
 
-      // Firestore batch writes (max 500 per batch)
       const BATCH_SIZE = 400;
       for (let i = 0; i < allMapped.length; i += BATCH_SIZE) {
         const batch = writeBatch(db);
@@ -240,7 +233,7 @@ function ImportModal({ onClose }) {
 
         <div className="px-6 py-5 space-y-4">
 
-          {/* ── idle / drop zone ── */}
+          {/* Drop zone */}
           {(step === "idle" || step === "preview") && (
             <div
               onDrop={handleDrop}
@@ -267,7 +260,7 @@ function ImportModal({ onClose }) {
             </div>
           )}
 
-          {/* ── Column mapping hint ── */}
+          {/* Column hint */}
           {step === "idle" && (
             <div className="bg-gray-50 border border-gray-100 rounded-lg px-4 py-3">
               <p className="text-[11px] font-medium text-gray-500 mb-1.5">Expected column headers</p>
@@ -286,7 +279,7 @@ function ImportModal({ onClose }) {
             </div>
           )}
 
-          {/* ── Preview table ── */}
+          {/* Preview table */}
           {step === "preview" && rows.length > 0 && (
             <div>
               <p className="text-[11px] font-medium text-gray-500 mb-2">
@@ -325,7 +318,7 @@ function ImportModal({ onClose }) {
             </div>
           )}
 
-          {/* ── Importing spinner ── */}
+          {/* Importing */}
           {step === "importing" && (
             <div className="flex flex-col items-center py-6 gap-3">
               <Loader2 className="w-7 h-7 text-emerald-600 animate-spin" />
@@ -334,7 +327,7 @@ function ImportModal({ onClose }) {
             </div>
           )}
 
-          {/* ── Done ── */}
+          {/* Done */}
           {step === "done" && (
             <div className="flex flex-col items-center py-6 gap-3">
               <CheckCircle2 className="w-8 h-8 text-emerald-500" />
@@ -345,7 +338,7 @@ function ImportModal({ onClose }) {
             </div>
           )}
 
-          {/* ── Error ── */}
+          {/* Error */}
           {step === "error" && (
             <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-lg px-3 py-3">
               <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
@@ -425,8 +418,8 @@ function Pagination({ currentPage, totalPages, onPageChange }) {
             key={p}
             onClick={() => onPageChange(p)}
             className={`w-8 h-8 rounded-lg text-xs font-medium border transition-all ${p === currentPage
-              ? "bg-emerald-700 text-white border-emerald-700"
-              : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:text-gray-900"
+                ? "bg-emerald-700 text-white border-emerald-700"
+                : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:text-gray-900"
               }`}
           >
             {p}
@@ -448,6 +441,7 @@ function Pagination({ currentPage, totalPages, onPageChange }) {
 
 // ─── AdminTickets ─────────────────────────────────────────────────────────────
 export default function AdminTickets() {
+  // ── State — ALL hooks must be at the top of the component ──
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("All");
@@ -459,7 +453,16 @@ export default function AdminTickets() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(12);
   const [showImport, setShowImport] = useState(false);
+  const [viewMode, setViewMode] = useState(
+    localStorage.getItem("ticketsViewMode") || "grid"
+  );
 
+  const handleViewMode = (mode) => {
+    setViewMode(mode);
+    localStorage.setItem("ticketsViewMode", mode);
+  };
+
+  // ── Effects ──
   useEffect(() => {
     const q = query(collection(db, "tickets"), orderBy("createdAt", "desc"));
     const unsub = onSnapshot(q, (snap) => {
@@ -473,6 +476,7 @@ export default function AdminTickets() {
     setCurrentPage(1);
   }, [activeTab, search, filterStatus, filterCategory, filterOffice, pageSize]);
 
+  // ── Derived data ──
   const filtered = tickets.filter((t) => {
     const matchTab = activeTab === "All" || t.urgency === activeTab;
     const matchStatus = filterStatus === "All" || t.status === filterStatus;
@@ -490,7 +494,7 @@ export default function AdminTickets() {
       (t.department ?? "").toLowerCase().includes(q) ||
       (t.location ?? "").toLowerCase().includes(q) ||
       (t.assignedTechnician ?? "").toLowerCase().includes(q) ||
-      (t.resolvedBy ?? "").toLowerCase().includes(q) ||   // ← searchable
+      (t.resolvedBy ?? "").toLowerCase().includes(q) ||
       (t.deviceName ?? "").toLowerCase().includes(q) ||
       (t.email ?? "").toLowerCase().includes(q);
 
@@ -509,46 +513,34 @@ export default function AdminTickets() {
     ? ISSUE_CATEGORIES
     : Array.from(new Set(tickets.map((t) => t.issueCategory).filter(Boolean))).sort())];
 
+  // ── Loading skeleton ──
   if (loading) {
     return (
       <div className="space-y-6 animate-pulse p-6 max-w-7xl mx-auto">
-        {/* Header */}
         <div className="flex items-center justify-between">
-          <div className="h-8 w-48 bg-gray-200 rounded-lg"></div>
-          <div className="h-10 w-32 bg-gray-200 rounded-lg"></div>
+          <div className="h-8 w-48 bg-gray-200 rounded-lg" />
+          <div className="h-10 w-32 bg-gray-200 rounded-lg" />
         </div>
-
-        {/* Tabs */}
         <div className="flex gap-3">
-          {[...Array(6)].map((_, i) => (
-            <div
-              key={i}
-              className="h-10 w-24 bg-gray-200 rounded-full"
-            />
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-10 w-24 bg-gray-200 rounded-full" />
           ))}
         </div>
-
-        {/* Ticket Cards */}
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {[...Array(6)].map((_, i) => (
-            <div
-              key={i}
-              className="bg-white border rounded-2xl p-5 shadow-sm"
-            >
+            <div key={i} className="bg-white border rounded-2xl p-5 shadow-sm">
               <div className="flex justify-between mb-4">
-                <div className="h-5 w-32 bg-gray-200 rounded"></div>
-                <div className="h-6 w-20 bg-gray-200 rounded-full"></div>
+                <div className="h-5 w-32 bg-gray-200 rounded" />
+                <div className="h-6 w-20 bg-gray-200 rounded-full" />
               </div>
-
               <div className="space-y-3">
-                <div className="h-4 w-full bg-gray-200 rounded"></div>
-                <div className="h-4 w-3/4 bg-gray-200 rounded"></div>
-                <div className="h-4 w-1/2 bg-gray-200 rounded"></div>
+                <div className="h-4 w-full bg-gray-200 rounded" />
+                <div className="h-4 w-3/4 bg-gray-200 rounded" />
+                <div className="h-4 w-1/2 bg-gray-200 rounded" />
               </div>
-
               <div className="flex justify-between mt-6">
-                <div className="h-8 w-20 bg-gray-200 rounded-lg"></div>
-                <div className="h-8 w-20 bg-gray-200 rounded-lg"></div>
+                <div className="h-8 w-20 bg-gray-200 rounded-lg" />
+                <div className="h-8 w-20 bg-gray-200 rounded-lg" />
               </div>
             </div>
           ))}
@@ -557,6 +549,7 @@ export default function AdminTickets() {
     );
   }
 
+  // ── Main render ──
   return (
     <div className="p-6 space-y-4 max-w-7xl mx-auto">
 
@@ -569,14 +562,42 @@ export default function AdminTickets() {
           </p>
         </div>
 
-        {/* ── Import button ── */}
-        <button
-          onClick={() => setShowImport(true)}
-          className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium bg-emerald-700 text-white hover:bg-emerald-800 transition shrink-0"
-        >
-          <Upload className="w-3.5 h-3.5" />
-          Import Excel
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          {/* View toggle */}
+          <div className="flex border border-gray-200 rounded-lg overflow-hidden">
+            <button
+              onClick={() => handleViewMode("grid")}
+              title="Grid view"
+              className={`flex items-center gap-1.5 px-3 py-2 text-sm transition ${viewMode === "grid"
+                  ? "bg-emerald-700 text-white"
+                  : "bg-white text-gray-500 hover:bg-gray-50"
+                }`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span className="text-xs font-medium hidden sm:inline">Grid</span>
+            </button>
+            <button
+              onClick={() => handleViewMode("list")}
+              title="List view"
+              className={`flex items-center gap-1.5 px-3 py-2 text-sm border-l border-gray-200 transition ${viewMode === "list"
+                  ? "bg-emerald-700 text-white"
+                  : "bg-white text-gray-500 hover:bg-gray-50"
+                }`}
+            >
+              <List className="w-3.5 h-3.5" />
+              <span className="text-xs font-medium hidden sm:inline">List</span>
+            </button>
+          </div>
+
+          {/* Import button */}
+          <button
+            onClick={() => setShowImport(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm font-medium bg-emerald-700 text-white hover:bg-emerald-800 transition"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            Import Excel
+          </button>
+        </div>
       </div>
 
       {/* ── Search + filter toggle ── */}
@@ -603,8 +624,8 @@ export default function AdminTickets() {
         <button
           onClick={() => setShowFilters(!showFilters)}
           className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border transition-all shrink-0 ${showFilters
-            ? "bg-emerald-700 text-white border-emerald-700"
-            : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
+              ? "bg-emerald-700 text-white border-emerald-700"
+              : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
             }`}
         >
           <SlidersHorizontal className="w-3.5 h-3.5" />
@@ -657,7 +678,11 @@ export default function AdminTickets() {
           {(filterStatus !== "All" || filterCategory !== "All" || filterOffice !== "All") && (
             <div className="sm:col-span-3 flex justify-end">
               <button
-                onClick={() => { setFilterStatus("All"); setFilterCategory("All"); setFilterOffice("All"); }}
+                onClick={() => {
+                  setFilterStatus("All");
+                  setFilterCategory("All");
+                  setFilterOffice("All");
+                }}
                 className="text-xs text-emerald-700 hover:text-emerald-900 font-medium"
               >
                 Clear all filters
@@ -677,15 +702,15 @@ export default function AdminTickets() {
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-sm font-medium border transition-all ${isActive
-                ? "bg-emerald-700 text-white border-emerald-700"
-                : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
+                  ? "bg-emerald-700 text-white border-emerald-700"
+                  : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
                 }`}
             >
               {tab}
               <span
                 className={`text-xs px-1.5 py-0.5 rounded font-medium ${isActive
-                  ? "bg-white/20 text-white"
-                  : urgencyCountStyle[tab] || "bg-gray-100 text-gray-500"
+                    ? "bg-white/20 text-white"
+                    : urgencyCountStyle[tab] || "bg-gray-100 text-gray-500"
                   }`}
               >
                 {count}
@@ -695,43 +720,66 @@ export default function AdminTickets() {
         })}
       </div>
 
-      {/* ── Ticket grid ── */}
+      {/* ── Ticket grid / list ── */}
       {filtered.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
           <p className="text-gray-400 font-medium text-sm">No tickets found</p>
           <p className="text-gray-300 text-xs mt-1">Try adjusting your filters or search query.</p>
         </div>
+      ) : viewMode === "grid" ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {paginated.map((ticket) => (
+            <TicketCard key={ticket._docId} ticket={ticket} />
+          ))}
+        </div>
       ) : (
-        <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {paginated.map((ticket) => (
-              <TicketCard key={ticket._docId} ticket={ticket} />
-            ))}
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-            <div className="flex items-center gap-3">
-              <p className="text-xs text-gray-400">
-                Showing{" "}
-                <span className="font-medium text-gray-600">
-                  {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filtered.length)}
-                </span>{" "}
-                of{" "}
-                <span className="font-medium text-gray-600">{filtered.length}</span> tickets
-              </p>
-              <select
-                value={pageSize}
-                onChange={(e) => setPageSize(Number(e.target.value))}
-                className="border border-gray-200 rounded-lg px-2 py-1 text-xs text-gray-600 outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-400 bg-white"
-              >
-                {PAGE_SIZE_OPTIONS.map((n) => (
-                  <option key={n} value={n}>{n} per page</option>
+        <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr>
+                {["Ticket ID", "Name", "Office", "Category", "Urgency", "Status", "Resolved by", "Date", ""].map((h) => (
+                  <th
+                    key={h}
+                    className="px-4 py-3 text-left text-[10px] font-semibold text-gray-400 uppercase tracking-wider whitespace-nowrap"
+                  >
+                    {h}
+                  </th>
                 ))}
-              </select>
-            </div>
-            <Pagination currentPage={safePage} totalPages={totalPages} onPageChange={setCurrentPage} />
+              </tr>
+            </thead>
+            <tbody>
+              {paginated.map((ticket) => (
+                <TicketRow key={ticket._docId} ticket={ticket} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ── Pagination ── */}
+      {filtered.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+          <div className="flex items-center gap-3">
+            <p className="text-xs text-gray-400">
+              Showing{" "}
+              <span className="font-medium text-gray-600">
+                {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filtered.length)}
+              </span>{" "}
+              of{" "}
+              <span className="font-medium text-gray-600">{filtered.length}</span> tickets
+            </p>
+            <select
+              value={pageSize}
+              onChange={(e) => setPageSize(Number(e.target.value))}
+              className="border border-gray-200 rounded-lg px-2 py-1 text-xs text-gray-600 outline-none focus:ring-2 focus:ring-emerald-100 focus:border-emerald-400 bg-white"
+            >
+              {PAGE_SIZE_OPTIONS.map((n) => (
+                <option key={n} value={n}>{n} per page</option>
+              ))}
+            </select>
           </div>
-        </>
+          <Pagination currentPage={safePage} totalPages={totalPages} onPageChange={setCurrentPage} />
+        </div>
       )}
 
       {/* ── Import modal ── */}

@@ -17,30 +17,21 @@ const COLOR_MAP = {
   red: { selected: "border-red-500 bg-red-50", dot: "bg-red-500", text: "text-red-800" },
 };
 
-// ── Generate ticket ID: RFTS-YYYY-MM-NNN ─────────────────────────────────────
 async function generateTicketId() {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, "0");
-
-  // Count tickets created this month
-  const startOfMonth = new Date(year, now.getMonth(), 1);
-  const endOfMonth = new Date(year, now.getMonth() + 1, 0, 23, 59, 59);
-
-  // Query by ticketId prefix for this month (fast, no index needed)
   const prefix = `RFTS-${year}-${month}-`;
   const q = query(
     collection(db, "tickets"),
     where("ticketId", ">=", prefix),
     where("ticketId", "<", prefix + "\uf8ff")
   );
-
   const snap = await getDocs(q);
   const next = String(snap.size + 1).padStart(3, "0");
   return `RFTS-${year}-${month}-${next}`;
 }
 
-// ── Field row helpers ─────────────────────────────────────────────────────────
 function Label({ text, required }) {
   return (
     <label className="form-label">
@@ -74,7 +65,6 @@ export default function TicketFormPage() {
   const [previewId, setPreviewId] = useState("");
   const [loadingId, setLoadingId] = useState(true);
 
-  // Pre-fetch the next ticket ID so user sees it before submitting
   useEffect(() => {
     generateTicketId()
       .then((id) => setPreviewId(id))
@@ -97,7 +87,6 @@ export default function TicketFormPage() {
       if (!form[f].trim()) { setError("Please fill in all required fields."); return; }
     }
 
-    // Basic email validation
     if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
       setError("Please enter a valid email address.");
       return;
@@ -105,9 +94,7 @@ export default function TicketFormPage() {
 
     setSubmitting(true);
     try {
-      // Generate final ID at submit time (handles race conditions by re-querying)
       const ticketId = await generateTicketId();
-
       const docRef = await addDoc(collection(db, "tickets"), {
         ticketId,
         firstName: form.firstName,
@@ -131,7 +118,6 @@ export default function TicketFormPage() {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
-
       navigate("/success", { state: { ticketId, docId: docRef.id, office } });
     } catch (err) {
       setError("Failed to submit ticket. Please try again.");
@@ -163,10 +149,10 @@ export default function TicketFormPage() {
           <span className="text-emerald-200 text-sm font-medium">{office.label}</span>
         </div>
 
-        <h1 className="text-3xl font-extrabold text-white mb-1">Submit a Support Ticket</h1>
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-white mb-1">Submit a Support Ticket</h1>
         <p className="text-emerald-300 mb-8 text-sm">Fill in the details below and MIS will attend to your concern.</p>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-2xl p-8 space-y-6">
+        <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-2xl p-5 sm:p-8 space-y-6">
 
           {/* Ticket ID preview */}
           <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
@@ -182,7 +168,9 @@ export default function TicketFormPage() {
                 <p className="font-mono text-sm font-bold text-emerald-800 tracking-wider">{previewId}</p>
               )}
             </div>
-            <p className="text-[10px] text-emerald-500 ml-auto text-right leading-tight">Auto-generated<br />upon submit</p>
+            <p className="text-[10px] text-emerald-500 ml-auto text-right leading-tight hidden sm:block">
+              Auto-generated<br />upon submit
+            </p>
           </div>
 
           {/* ── Personal Info ── */}
@@ -190,8 +178,8 @@ export default function TicketFormPage() {
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Personal Information</p>
             <div className="space-y-4">
 
-              {/* Name row */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* Name row — stacks on mobile */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label text="Last Name" required />
                   <Input placeholder="e.g. Dela Cruz" value={form.lastName}
@@ -204,8 +192,8 @@ export default function TicketFormPage() {
                 </div>
               </div>
 
-              {/* Contact + Email */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* Contact + Email — stacks on mobile */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label text="Contact Number" />
                   <Input type="tel" placeholder="e.g. 09XX-XXX-XXXX" value={form.contactNumber}
@@ -241,8 +229,8 @@ export default function TicketFormPage() {
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Issue Details</p>
             <div className="space-y-4">
 
-              {/* Device Name + Category */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* Device + Category — stacks on mobile */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label text="Device Name / Asset Tag" />
                   <Input placeholder="e.g. DELL-PC-001" value={form.deviceName}
@@ -275,22 +263,26 @@ export default function TicketFormPage() {
                   value={form.description} onChange={(e) => set("description", e.target.value)} />
               </div>
 
-              {/* Urgency */}
+              {/* Urgency — always 3 cols but smaller on mobile */}
               <div>
                 <Label text="Urgency Level" required />
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-3 gap-2 sm:gap-3">
                   {URGENCY_OPTIONS.map((opt) => {
                     const isSelected = form.urgency === opt.value;
                     const c = COLOR_MAP[opt.color];
                     return (
                       <button key={opt.value} type="button"
                         onClick={() => set("urgency", opt.value)}
-                        className={`flex flex-col items-center gap-1.5 rounded-xl border-2 px-3 py-3 transition-all ${isSelected ? c.selected + " shadow-sm" : "border-gray-200 hover:border-gray-300 bg-white"
+                        className={`flex flex-col items-center gap-1 sm:gap-1.5 rounded-xl border-2 px-2 sm:px-3 py-2.5 sm:py-3 transition-all ${isSelected ? c.selected + " shadow-sm" : "border-gray-200 hover:border-gray-300 bg-white"
                           }`}
                       >
-                        <div className={`w-3 h-3 rounded-full ${c.dot}`} />
-                        <span className={`font-bold text-sm ${isSelected ? c.text : "text-gray-700"}`}>{opt.value}</span>
-                        <span className="text-xs text-gray-400 text-center leading-tight">{opt.desc}</span>
+                        <div className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full ${c.dot}`} />
+                        <span className={`font-bold text-xs sm:text-sm ${isSelected ? c.text : "text-gray-700"}`}>
+                          {opt.value}
+                        </span>
+                        <span className="text-[10px] sm:text-xs text-gray-400 text-center leading-tight hidden sm:block">
+                          {opt.desc}
+                        </span>
                       </button>
                     );
                   })}
