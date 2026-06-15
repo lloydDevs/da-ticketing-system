@@ -1,15 +1,57 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, query, where, getDocs } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import { ISSUE_CATEGORIES } from "../../data/offices";
-import { Monitor, ArrowLeft, AlertCircle } from "lucide-react";
+import { Monitor, ArrowLeft, AlertCircle, Hash, Loader2 } from "lucide-react";
 
 const URGENCY_OPTIONS = [
   { value: "Low", desc: "Non-urgent, can wait", color: "emerald" },
   { value: "Medium", desc: "Affecting productivity", color: "yellow" },
   { value: "High", desc: "Critical, work stopped", color: "red" },
 ];
+
+const COLOR_MAP = {
+  emerald: { selected: "border-emerald-500 bg-emerald-50", dot: "bg-emerald-500", text: "text-emerald-800" },
+  yellow: { selected: "border-yellow-500 bg-yellow-50", dot: "bg-yellow-500", text: "text-yellow-800" },
+  red: { selected: "border-red-500 bg-red-50", dot: "bg-red-500", text: "text-red-800" },
+};
+
+// ── Generate ticket ID: RFTS-YYYY-MM-NNN ─────────────────────────────────────
+async function generateTicketId() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+
+  // Count tickets created this month
+  const startOfMonth = new Date(year, now.getMonth(), 1);
+  const endOfMonth = new Date(year, now.getMonth() + 1, 0, 23, 59, 59);
+
+  // Query by ticketId prefix for this month (fast, no index needed)
+  const prefix = `RFTS-${year}-${month}-`;
+  const q = query(
+    collection(db, "tickets"),
+    where("ticketId", ">=", prefix),
+    where("ticketId", "<", prefix + "\uf8ff")
+  );
+
+  const snap = await getDocs(q);
+  const next = String(snap.size + 1).padStart(3, "0");
+  return `RFTS-${year}-${month}-${next}`;
+}
+
+// ── Field row helpers ─────────────────────────────────────────────────────────
+function Label({ text, required }) {
+  return (
+    <label className="form-label">
+      {text} {required && <span className="text-red-500">*</span>}
+    </label>
+  );
+}
+
+function Input({ ...props }) {
+  return <input className="form-input" {...props} />;
+}
 
 export default function TicketFormPage() {
   const { state } = useLocation();
@@ -19,46 +61,78 @@ export default function TicketFormPage() {
   const [form, setForm] = useState({
     lastName: "",
     firstName: "",
+    contactNumber: "",
+    email: "",
     location: "",
-    department: office?.label || "",
+    deviceName: "",
     issueCategory: "",
     description: "",
     urgency: "",
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [previewId, setPreviewId] = useState("");
+  const [loadingId, setLoadingId] = useState(true);
+
+  // Pre-fetch the next ticket ID so user sees it before submitting
+  useEffect(() => {
+    generateTicketId()
+      .then((id) => setPreviewId(id))
+      .finally(() => setLoadingId(false));
+  }, []);
 
   if (!office) {
     navigate("/");
     return null;
   }
 
-  const handleChange = (field, value) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-  };
+  const set = (field, value) => setForm((p) => ({ ...p, [field]: value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
     const required = ["lastName", "firstName", "location", "issueCategory", "description", "urgency"];
-    for (const field of required) {
-      if (!form[field].trim()) {
-        setError("Please fill in all required fields.");
-        return;
-      }
+    for (const f of required) {
+      if (!form[f].trim()) { setError("Please fill in all required fields."); return; }
     }
+
+    // Basic email validation
+    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
     setSubmitting(true);
     try {
+      // Generate final ID at submit time (handles race conditions by re-querying)
+      const ticketId = await generateTicketId();
+
       const docRef = await addDoc(collection(db, "tickets"), {
-        ...form,
+        ticketId,
+        firstName: form.firstName,
+        lastName: form.lastName,
+        contactNumber: form.contactNumber,
+        email: form.email,
+        location: form.location,
+        deviceName: form.deviceName,
+        department: office.label,
+        office: office.value,
         officeCode: office.value,
+        issueCategory: form.issueCategory,
+        description: form.description,
+        urgency: form.urgency,
         status: "Open",
+        resolvedBy: "",
+        resolvedNote: "",
+        resolutionSummary: "",
+        resolvedAt: null,
+        resolvedDate: null,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        resolvedNote: "",
-        resolvedAt: null,
       });
-      navigate("/success", { state: { ticketId: docRef.id, office } });
+
+      navigate("/success", { state: { ticketId, docId: docRef.id, office } });
     } catch (err) {
       setError("Failed to submit ticket. Please try again.");
       console.error(err);
@@ -69,15 +143,14 @@ export default function TicketFormPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-950 via-emerald-900 to-emerald-950 py-10 px-4">
+
       {/* Top bar */}
       <div className="max-w-2xl mx-auto mb-6 flex items-center gap-4">
-        <button
-          onClick={() => navigate("/")}
-          className="flex items-center gap-1.5 text-emerald-300 hover:text-white text-sm transition-colors"
-        >
+        <button onClick={() => navigate("/")}
+          className="flex items-center gap-1.5 text-emerald-300 hover:text-white text-sm transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
-        <div className="flex items-center gap-2 text-gold-400">
+        <div className="flex items-center gap-2 text-yellow-400">
           <Monitor className="w-4 h-4" />
           <span className="text-xs font-semibold tracking-widest uppercase">DA-MIMAROPA IT Support</span>
         </div>
@@ -86,7 +159,7 @@ export default function TicketFormPage() {
       <div className="max-w-2xl mx-auto">
         {/* Office badge */}
         <div className="mb-5 inline-flex items-center gap-2 bg-emerald-800/60 border border-emerald-700 rounded-full px-4 py-1.5">
-          <div className="w-2 h-2 rounded-full bg-gold-400" />
+          <div className="w-2 h-2 rounded-full bg-yellow-400" />
           <span className="text-emerald-200 text-sm font-medium">{office.label}</span>
         </div>
 
@@ -94,142 +167,150 @@ export default function TicketFormPage() {
         <p className="text-emerald-300 mb-8 text-sm">Fill in the details below and MIS will attend to your concern.</p>
 
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-2xl p-8 space-y-6">
-          {/* Name row */}
-          <div className="grid grid-cols-2 gap-4">
+
+          {/* Ticket ID preview */}
+          <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+            <Hash className="w-4 h-4 text-emerald-600 shrink-0" />
             <div>
-              <label className="form-label">Last Name <span className="text-red-500">*</span></label>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="e.g. Dela Cruz"
-                value={form.lastName}
-                onChange={(e) => handleChange("lastName", e.target.value)}
-              />
+              <p className="text-[10px] font-semibold text-emerald-600 uppercase tracking-widest">Ticket Reference ID</p>
+              {loadingId ? (
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <Loader2 className="w-3 h-3 text-emerald-500 animate-spin" />
+                  <span className="text-xs text-emerald-500">Generating…</span>
+                </div>
+              ) : (
+                <p className="font-mono text-sm font-bold text-emerald-800 tracking-wider">{previewId}</p>
+              )}
             </div>
-            <div>
-              <label className="form-label">First Name <span className="text-red-500">*</span></label>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="e.g. Juan"
-                value={form.firstName}
-                onChange={(e) => handleChange("firstName", e.target.value)}
-              />
-            </div>
+            <p className="text-[10px] text-emerald-500 ml-auto text-right leading-tight">Auto-generated<br />upon submit</p>
           </div>
 
-          {/* Location */}
+          {/* ── Personal Info ── */}
           <div>
-            <label className="form-label">Location / Room / Building <span className="text-red-500">*</span></label>
-            <input
-              type="text"
-              className="form-input"
-              placeholder="e.g. 2nd Floor, Main Building"
-              value={form.location}
-              onChange={(e) => handleChange("location", e.target.value)}
-            />
-          </div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Personal Information</p>
+            <div className="space-y-4">
 
-          {/* Department (auto-filled) */}
-          <div>
-            <label className="form-label">Office / Department</label>
-            <input
-              type="text"
-              className="form-input bg-emerald-50 text-emerald-800 font-medium"
-              value={office.label}
-              readOnly
-            />
-          </div>
+              {/* Name row */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label text="Last Name" required />
+                  <Input placeholder="e.g. Dela Cruz" value={form.lastName}
+                    onChange={(e) => set("lastName", e.target.value)} />
+                </div>
+                <div>
+                  <Label text="First Name" required />
+                  <Input placeholder="e.g. Juan" value={form.firstName}
+                    onChange={(e) => set("firstName", e.target.value)} />
+                </div>
+              </div>
 
-          {/* Issue Category */}
-          <div>
-            <label className="form-label">Issue Category / Subject <span className="text-red-500">*</span></label>
-            <div className="relative">
-              <select
-                className="form-select pr-10"
-                value={form.issueCategory}
-                onChange={(e) => handleChange("issueCategory", e.target.value)}
-              >
-                <option value="">— Select category —</option>
-                {ISSUE_CATEGORIES.map((cat) => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
-                <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
+              {/* Contact + Email */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label text="Contact Number" />
+                  <Input type="tel" placeholder="e.g. 09XX-XXX-XXXX" value={form.contactNumber}
+                    onChange={(e) => set("contactNumber", e.target.value)} />
+                </div>
+                <div>
+                  <Label text="Email Address" />
+                  <Input type="email" placeholder="e.g. juan@da.gov.ph" value={form.email}
+                    onChange={(e) => set("email", e.target.value)} />
+                </div>
+              </div>
+
+              {/* Location */}
+              <div>
+                <Label text="Location / Room / Building" required />
+                <Input placeholder="e.g. 2nd Floor, Main Building" value={form.location}
+                  onChange={(e) => set("location", e.target.value)} />
+              </div>
+
+              {/* Office (auto-filled) */}
+              <div>
+                <Label text="Office / Department" />
+                <input className="form-input bg-emerald-50 text-emerald-800 font-medium cursor-not-allowed"
+                  value={office.label} readOnly />
               </div>
             </div>
           </div>
 
-          {/* Description */}
-          <div>
-            <label className="form-label">Description / Problem Details <span className="text-red-500">*</span></label>
-            <textarea
-              className="form-input resize-none"
-              rows={4}
-              placeholder="Describe the issue in detail — what happened, when it started, what you were doing..."
-              value={form.description}
-              onChange={(e) => handleChange("description", e.target.value)}
-            />
-          </div>
+          <div className="border-t border-gray-100" />
 
-          {/* Urgency */}
+          {/* ── Issue Details ── */}
           <div>
-            <label className="form-label">Urgency Level <span className="text-red-500">*</span></label>
-            <div className="grid grid-cols-3 gap-3">
-              {URGENCY_OPTIONS.map((opt) => {
-                const isSelected = form.urgency === opt.value;
-                const colorMap = {
-                  emerald: {
-                    selected: "border-emerald-500 bg-emerald-50",
-                    dot: "bg-emerald-500",
-                    text: "text-emerald-800",
-                  },
-                  yellow: {
-                    selected: "border-yellow-500 bg-yellow-50",
-                    dot: "bg-yellow-500",
-                    text: "text-yellow-800",
-                  },
-                  red: {
-                    selected: "border-red-500 bg-red-50",
-                    dot: "bg-red-500",
-                    text: "text-red-800",
-                  },
-                };
-                const c = colorMap[opt.color];
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => handleChange("urgency", opt.value)}
-                    className={`flex flex-col items-center gap-1.5 rounded-xl border-2 px-3 py-3 transition-all cursor-pointer ${
-                      isSelected ? c.selected + " shadow-sm" : "border-gray-200 hover:border-gray-300 bg-white"
-                    }`}
-                  >
-                    <div className={`w-3 h-3 rounded-full ${c.dot}`} />
-                    <span className={`font-bold text-sm ${isSelected ? c.text : "text-gray-700"}`}>{opt.value}</span>
-                    <span className="text-xs text-gray-400 text-center leading-tight">{opt.desc}</span>
-                  </button>
-                );
-              })}
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">Issue Details</p>
+            <div className="space-y-4">
+
+              {/* Device Name + Category */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label text="Device Name / Asset Tag" />
+                  <Input placeholder="e.g. DELL-PC-001" value={form.deviceName}
+                    onChange={(e) => set("deviceName", e.target.value)} />
+                </div>
+                <div>
+                  <Label text="Issue Category" required />
+                  <div className="relative">
+                    <select className="form-select pr-10" value={form.issueCategory}
+                      onChange={(e) => set("issueCategory", e.target.value)}>
+                      <option value="">— Select category —</option>
+                      {ISSUE_CATEGORIES.map((cat) => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                      <svg className="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <Label text="Description / Problem Details" required />
+                <textarea className="form-input resize-none" rows={4}
+                  placeholder="Describe the issue in detail — what happened, when it started, what you were doing..."
+                  value={form.description} onChange={(e) => set("description", e.target.value)} />
+              </div>
+
+              {/* Urgency */}
+              <div>
+                <Label text="Urgency Level" required />
+                <div className="grid grid-cols-3 gap-3">
+                  {URGENCY_OPTIONS.map((opt) => {
+                    const isSelected = form.urgency === opt.value;
+                    const c = COLOR_MAP[opt.color];
+                    return (
+                      <button key={opt.value} type="button"
+                        onClick={() => set("urgency", opt.value)}
+                        className={`flex flex-col items-center gap-1.5 rounded-xl border-2 px-3 py-3 transition-all ${isSelected ? c.selected + " shadow-sm" : "border-gray-200 hover:border-gray-300 bg-white"
+                          }`}
+                      >
+                        <div className={`w-3 h-3 rounded-full ${c.dot}`} />
+                        <span className={`font-bold text-sm ${isSelected ? c.text : "text-gray-700"}`}>{opt.value}</span>
+                        <span className="text-xs text-gray-400 text-center leading-tight">{opt.desc}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
 
           {error && (
             <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-red-700 text-sm">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              {error}
+              <AlertCircle className="w-4 h-4 shrink-0" />{error}
             </div>
           )}
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full btn-primary py-3.5 text-base rounded-xl"
-          >
-            {submitting ? "Submitting…" : "Submit Ticket"}
+          <button type="submit" disabled={submitting || loadingId}
+            className="w-full btn-primary py-3.5 text-base rounded-xl flex items-center justify-center gap-2 disabled:opacity-50">
+            {submitting
+              ? <><Loader2 className="w-4 h-4 animate-spin" /> Submitting…</>
+              : "Submit Ticket"
+            }
           </button>
         </form>
 
