@@ -26,42 +26,45 @@ export default function OfficeSelectorPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-950 via-emerald-900 to-emerald-950 flex flex-col items-center justify-center px-4 py-12">
+
       {/* Header */}
-      <div className="text-center mb-10">
-        <div className="inline-flex items-center justify-center w-20 h-20 bg-gold-500 rounded-2xl mb-5 shadow-2xl shadow-gold-500/30">
-          <Monitor className="w-10 h-10 text-emerald-950" />
+      <div className="text-center mb-8 w-full max-w-md">
+        <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gold-500 rounded-2xl mb-4 sm:mb-5 shadow-2xl shadow-gold-500/30">
+          <Monitor className="w-8 h-8 sm:w-10 sm:h-10 text-emerald-950" />
         </div>
-        <div className="text-gold-400 text-sm font-semibold tracking-widest uppercase mb-2">
+        <div className="text-gold-400 text-xs sm:text-sm font-semibold tracking-widest uppercase mb-2">
           Department of Agriculture · MIMAROPA
         </div>
-        <h1 className="text-4xl font-extrabold text-white mb-2">
+        <h1 className="text-2xl sm:text-4xl font-extrabold text-white mb-2">
           IT Support Ticketing
         </h1>
-        <p className="text-emerald-300 text-base max-w-md mx-auto">
+        <p className="text-emerald-300 text-sm sm:text-base max-w-md mx-auto">
           Report technical issues to the Management Information Systems team. Select your office to get started.
         </p>
       </div>
 
-      {/* Card */}
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
-        <h2 className="text-emerald-900 font-bold text-xl mb-1">Which office are you from?</h2>
+      {/* Card — w-full with max-w prevents stretching */}
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-5 sm:p-8">
+        <h2 className="text-emerald-900 font-bold text-lg sm:text-xl mb-1">Which office are you from?</h2>
         <p className="text-gray-500 text-sm mb-6">Select your office or operating unit below.</p>
 
-        {/* Custom searchable dropdown */}
+        {/* Dropdown wrapper — overflow-hidden prevents content from expanding card */}
         <div className="relative mb-6">
           <button
             type="button"
             onClick={() => setOpen(!open)}
-            className="w-full flex items-center justify-between border-2 border-emerald-200 rounded-xl px-4 py-3 text-left focus:outline-none focus:border-emerald-500 transition-colors bg-emerald-50 hover:bg-emerald-100"
+            className="w-full flex items-center justify-between border-2 border-emerald-200 rounded-xl px-4 py-3 text-left focus:outline-none focus:border-emerald-500 transition-colors bg-emerald-50 hover:bg-emerald-100 min-w-0"
           >
-            <span className={selectedOffice ? "text-emerald-900 font-medium text-sm" : "text-gray-400 text-sm"}>
+            {/* truncate keeps long office names from blowing out the button */}
+            <span className={`truncate pr-2 text-sm ${selectedOffice ? "text-emerald-900 font-medium" : "text-gray-400"}`}>
               {selectedOffice ? selectedOffice.label : "— Select your office —"}
             </span>
-            <ChevronDown className={`w-5 h-5 text-emerald-600 transition-transform ${open ? "rotate-180" : ""}`} />
+            <ChevronDown className={`w-5 h-5 text-emerald-600 transition-transform shrink-0 ${open ? "rotate-180" : ""}`} />
           </button>
 
           {open && (
-            <div className="absolute z-50 mt-2 w-full bg-white rounded-xl border border-emerald-100 shadow-2xl overflow-hidden">
+            // w-full + left-0 anchors dropdown to button, not to content width
+            <div className="absolute z-50 left-0 right-0 mt-2 bg-white rounded-xl border border-emerald-100 shadow-2xl overflow-hidden">
               <div className="p-3 border-b border-emerald-100">
                 <div className="flex items-center gap-2 bg-emerald-50 rounded-lg px-3 py-2">
                   <Search className="w-4 h-4 text-emerald-500 shrink-0" />
@@ -71,11 +74,11 @@ export default function OfficeSelectorPage() {
                     placeholder="Search office..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="bg-transparent text-sm text-emerald-900 outline-none w-full placeholder-emerald-400"
+                    className="bg-transparent text-sm text-emerald-900 outline-none w-full placeholder-emerald-400 min-w-0"
                   />
                 </div>
               </div>
-              <div className="max-h-64 overflow-y-auto">
+              <div className="max-h-56 sm:max-h-64 overflow-y-auto">
                 {filtered.length === 0 ? (
                   <div className="px-4 py-6 text-center text-sm text-gray-400">No offices found</div>
                 ) : (
@@ -88,13 +91,14 @@ export default function OfficeSelectorPage() {
                         setOpen(false);
                         setSearch("");
                       }}
-                      className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-emerald-50 ${
-                        selected === office.value
-                          ? "bg-emerald-100 text-emerald-900 font-semibold"
-                          : "text-gray-700"
-                      }`}
+                      // text-left + w-full, truncate prevents row from expanding
+                      className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-emerald-50 ${selected === office.value
+                        ? "bg-emerald-100 text-emerald-900 font-semibold"
+                        : "text-gray-700"
+                        }`}
                     >
-                      {office.label}
+                      {/* Allow wrapping inside list so full name is readable */}
+                      <span className="block leading-snug">{office.label}</span>
                     </button>
                   ))
                 )}
