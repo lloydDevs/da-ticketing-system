@@ -16,6 +16,14 @@ const COLOR_MAP = {
   yellow: { selected: "border-yellow-500 bg-yellow-50", dot: "bg-yellow-500", text: "text-yellow-800" },
   red: { selected: "border-red-500 bg-red-50", dot: "bg-red-500", text: "text-red-800" },
 };
+const locations = [
+  "Oriental Mindoro",
+  "Occidental Mindoro",
+  "Marinduque",
+  "Palawan",
+  "Romblon",
+  "Quezon City Satellite Office",
+];
 
 async function generateTicketId() {
   const now = new Date();
@@ -209,8 +217,22 @@ export default function TicketFormPage() {
               {/* Location */}
               <div>
                 <Label text="Location / Room / Building" required />
-                <Input placeholder="e.g. 2nd Floor, Main Building" value={form.location}
-                  onChange={(e) => set("location", e.target.value)} />
+
+                <select
+                  value={form.location}
+                  onChange={(e) => set("location", e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-black focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="" disabled>
+                    Select Location
+                  </option>
+
+                  {locations.map((location) => (
+                    <option key={location} value={location}>
+                      {location}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Office (auto-filled) */}
