@@ -257,13 +257,13 @@ function NotificationItem({ ticket, selected, onSelect, onMarkRead, onDelete }) 
                                         Mark read
                                     </button>
                                 )}
-                                <button
+                                {/* <button
                                     onClick={() => onDelete(ticket._docId)}
                                     className="flex items-center gap-1 text-[11px] text-red-400 hover:text-red-600 bg-red-50 hover:bg-red-100 border border-red-100 px-2.5 py-1 rounded-lg transition-colors"
                                 >
                                     <Trash2 className="w-3 h-3" />
                                     Delete
-                                </button>
+                                </button> */}
                             </div>
                         </div>
                     </div>
@@ -491,10 +491,10 @@ export default function Notifications() {
                             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white transition disabled:opacity-50">
                             <Eye className="w-3.5 h-3.5" /> Mark read
                         </button>
-                        <button onClick={() => requestDelete(selected)} disabled={actionLoading}
+                        {/* <button onClick={() => requestDelete(selected)} disabled={actionLoading}
                             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-red-600 hover:bg-red-500 text-white transition disabled:opacity-50">
                             <Trash2 className="w-3.5 h-3.5" /> Delete
-                        </button>
+                        </button> */}
                         <button onClick={() => setSelected(new Set())}
                             className="text-xs text-emerald-300 hover:text-white px-2 py-1.5 transition">
                             Cancel
