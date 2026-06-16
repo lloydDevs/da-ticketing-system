@@ -75,6 +75,7 @@ export default function OfficeSelectorPage() {
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="bg-transparent text-sm text-emerald-900 outline-none w-full placeholder-emerald-400 min-w-0"
+                    style={{ fontSize: "16px" }}
                   />
                 </div>
               </div>
