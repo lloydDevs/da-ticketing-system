@@ -49,6 +49,7 @@ export const OFFICES = [
   { value: "APCO-MARINDUQUE", label: "APCO - Marinduque (Boac)" },
   { value: "APCO-ROMBLON", label: "APCO - Romblon (Odiongan)" },
   { value: "APCO-PALAWAN", label: "APCO - Palawan (Puerto Princesa City)" },
+  { value: "COA", label: "Commission on Audit" },
 ];
 
 export const ISSUE_CATEGORIES = [
