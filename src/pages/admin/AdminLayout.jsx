@@ -2,7 +2,7 @@ import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import {
   LayoutDashboard, Ticket, LogOut, Monitor,
-  Menu, X, FileSpreadsheet, Bell
+  Menu, X, FileSpreadsheet, Bell, Wrench
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { collection, onSnapshot } from "firebase/firestore";
@@ -13,6 +13,7 @@ const navItems = [
   { to: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/admin/tickets", icon: Ticket, label: "All Tickets" },
   { to: "/admin/notifications", icon: Bell, label: "Notifications", isNotif: true },
+  { to: "/admin/preventive-maintenance", icon: Wrench, label: "Preventive Maintenance" },
   { to: "/admin/reports", icon: FileSpreadsheet, label: "Reports" },
 ];
 
