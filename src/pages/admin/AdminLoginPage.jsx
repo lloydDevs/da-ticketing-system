@@ -23,7 +23,7 @@ export default function AdminLoginPage() {
       await login(email, password);
       navigate("/admin/dashboard", { replace: true });
     } catch {
-      setError("Invalid credentials. Please try again.");
+      setError("Inva lid credentials. Please try again.");
     } finally {
       setLoading(false);
     }

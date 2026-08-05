@@ -6,6 +6,7 @@ import {
   PieChart, Pie, Cell, Legend,
 } from "recharts";
 import { Ticket, AlertTriangle, CheckCircle, Clock } from "lucide-react";
+
 // import { seedFakeTickets } from "../../utils/seedFakeTickets";
 const URGENCY_COLORS = { Low: "#16a34a", Medium: "#f59e0b", High: "#dc2626" };
 const STATUS_COLORS = {

@@ -5,8 +5,9 @@ import {
   Menu, X, FileSpreadsheet, Bell
 } from "lucide-react";
 import { useState, useEffect } from "react";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { collection, onSnapshot } from "firebase/firestore  ";
 import { db } from "../../lib/firebase";
+import TicketChatBot from "../../components/TicketChatBot";
 
 const navItems = [
   { to: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -58,7 +59,7 @@ function SidebarContent({ user, onLogout, onNavClick, unreadCount }) {
 
             <span className="flex-1">{label}</span>
 
-            {/* ✅ Count badge — only shows when there are unreads */}
+            {/* Count badge */}
             {isNotif && unreadCount > 0 && (
               <span className="min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-semibold leading-none">
                 {unreadCount > 99 ? "99+" : unreadCount}
@@ -91,6 +92,7 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [tickets, setTickets] = useState([]);
 
   const handleLogout = async () => {
     await logout();
@@ -98,11 +100,11 @@ export default function AdminLayout() {
   };
 
   useEffect(() => {
-    // ✅ Match Notifications.jsx: isViewed !== true means unread
-    // Client-side filter avoids composite index requirement
+    // Single listener — populates both tickets state and unread count
     const unsub = onSnapshot(collection(db, "tickets"), (snap) => {
-      const count = snap.docs.filter((d) => d.data().isViewed !== true).length;
-      setUnreadCount(count);
+      const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setTickets(all);
+      setUnreadCount(all.filter(t => t.isViewed !== true).length);
     });
     return unsub;
   }, []);
@@ -148,7 +150,7 @@ export default function AdminLayout() {
             <span className="text-white font-medium text-sm">DA-MIMAROPA IT</span>
           </div>
           <div className="flex items-center gap-2">
-            {/* ✅ Mobile topbar badge */}
+            {/* Mobile topbar badge */}
             {unreadCount > 0 && (
               <span className="min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-semibold">
                 {unreadCount > 99 ? "99+" : unreadCount}
@@ -165,6 +167,7 @@ export default function AdminLayout() {
 
         <main className="flex-1 overflow-y-auto">
           <Outlet />
+          <TicketChatBot tickets={tickets} />
         </main>
       </div>
     </div>
