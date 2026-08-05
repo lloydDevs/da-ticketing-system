@@ -1,3 +1,5 @@
-<div className="text-center">
-    Coming soon
-</div>
+return(
+    <div className="text-center">
+        Coming soon
+    </div>
+)
