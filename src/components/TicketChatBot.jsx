@@ -28,9 +28,9 @@ function geminiUrl(modelId) {
 // ─── Developer info — edit these with your real details ──────────────────────
 const DEVELOPER = {
     name: "Lloyd Ramirez",         // ← your full name
-    role: "IT Officer",            // ← your role/title
+    role: "Computer Programmer",            // ← your role/title
     agency: "DA-MIMAROPA",           // ← your agency
-    email: "itoffice@da-mimaropa.gov.ph", // ← your email (or remove line)
+    email: "lloyd11ramirez@gmail.com", // ← your email (or remove line)
 };
 
 const DEV_ANSWER =
