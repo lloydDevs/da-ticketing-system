@@ -5,7 +5,7 @@ import {
   Menu, X, FileSpreadsheet, Bell
 } from "lucide-react";
 import { useState, useEffect } from "react";
-import { collection, onSnapshot } from "firebase/firestore  ";
+import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../../lib/firebase";
 import TicketChatBot from "../../components/TicketChatBot";
 
