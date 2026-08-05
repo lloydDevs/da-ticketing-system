@@ -10,6 +10,7 @@ import AdminLayout from "./pages/admin/AdminLayout";
 import AdminReports from "./pages/admin/AdminReports";
 import LoadingSpinner from "./components/common/LoadingSpinner";
 import Notifications from "./pages/admin/Notifications";
+import PrevMaintenance from "./pages/admin/PreventiveMaintenance"
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -40,6 +41,7 @@ export default function App() {
             <Route path="tickets" element={<AdminTickets />} />
             <Route path="reports" element={<AdminReports />} />
             <Route path="notifications" element={<Notifications />} />
+            <Route path="preventive-maintenance" element={<PrevMaintenance />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
